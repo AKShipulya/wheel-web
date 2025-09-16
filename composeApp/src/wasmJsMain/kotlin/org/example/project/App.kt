@@ -16,13 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import kotlin.math.*
 import kotlin.random.Random
 
 data class Participant(
@@ -213,14 +214,53 @@ fun App() {
                             rotate(angle, pivot = center) {
                                 wheelParticipants.forEachIndexed { index, participant ->
                                     val startAngle = index * sliceAngle
+
+                                    // Создаем более светлый и более темный оттенки
+                                    val lightColor = Color(
+                                        red = (participant.color.red + 0.3f).coerceIn(0f, 1f),
+                                        green = (participant.color.green + 0.3f).coerceIn(0f, 1f),
+                                        blue = (participant.color.blue + 0.3f).coerceIn(0f, 1f),
+                                        alpha = participant.color.alpha
+                                    )
+
+                                    val darkColor = Color(
+                                        red = (participant.color.red * 0.4f).coerceIn(0f, 1f),
+                                        green = (participant.color.green * 0.4f).coerceIn(0f, 1f),
+                                        blue = (participant.color.blue * 0.4f).coerceIn(0f, 1f),
+                                        alpha = participant.color.alpha
+                                    )
+
+                                    // Создаем угловой градиент с парами (позиция, цвет)
+                                    val gradient = Brush.sweepGradient(
+                                        0f to lightColor,
+                                        0.25f to participant.color,
+                                        0.5f to darkColor,
+                                        0.75f to participant.color,
+                                        1f to lightColor,
+                                        center = center
+                                    )
+
                                     drawArc(
-                                        color = participant.color,
+                                        brush = gradient,
                                         startAngle = startAngle,
                                         sweepAngle = sliceAngle,
                                         useCenter = true,
                                         topLeft = Offset(center.x - radius, center.y - radius),
                                         size = Size(radius * 2, radius * 2)
                                     )
+
+                                    // Добавляем тонкую белую границу между секторами
+                                    if (wheelParticipants.size > 1) {
+                                        val startX = center.x + radius * cos(startAngle * PI / 180).toFloat()
+                                        val startY = center.y + radius * sin(startAngle * PI / 180).toFloat()
+
+                                        drawLine(
+                                            color = Color.White,
+                                            start = center,
+                                            end = Offset(startX, startY),
+                                            strokeWidth = 2f
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -407,4 +447,3 @@ fun App() {
         }
     }
 }
-
