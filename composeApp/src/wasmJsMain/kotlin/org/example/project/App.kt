@@ -2,6 +2,7 @@ package org.example.project
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,7 +34,6 @@ data class Participant(
 @Composable
 @Preview
 fun App() {
-    var participantsInput by remember { mutableStateOf("") }
     var participants by remember { mutableStateOf(listOf<Participant>()) }
     var wheelParticipants by remember { mutableStateOf(listOf<Participant>()) }
     var currentWinner by remember { mutableStateOf<Participant?>(null) }
@@ -42,8 +42,31 @@ fun App() {
     var angle by remember { mutableStateOf(0f) }
     var leaderboard by remember { mutableStateOf(listOf<LeaderboardEntry>()) }
 
+    var showAddPlayerInput by remember { mutableStateOf(false) }
+    var newPlayerName by remember { mutableStateOf("") }
+
     val scope = rememberCoroutineScope()
     val leaderboardManager = remember { LeaderboardManager() }
+
+    val colors = listOf(
+        Color.Red, Color.Green, Color.Blue, Color.Yellow,
+        Color.Cyan, Color.Magenta, Color.Gray, Color(0xFFFFA500),
+        Color(0xFFFF1493), Color(0xFF9370DB), Color(0xFF20B2AA), Color(0xFFFF6347)
+    )
+
+    fun addPlayer(name: String) {
+        if (name.isNotBlank()) {
+            val newParticipant = Participant(
+                name = name.trim(),
+                score = 0,
+                color = colors[participants.size % colors.size]
+            )
+            participants = participants + newParticipant
+            wheelParticipants = participants.toList()
+            newPlayerName = ""
+            showAddPlayerInput = false
+        }
+    }
 
     // Загружаем лидерборд при запуске
     LaunchedEffect(Unit) {
@@ -53,35 +76,129 @@ fun App() {
 
     MaterialTheme {
         Row(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            // Левая часть - игра
+            // Левая часть - управление игроками
             Column(
-                modifier = Modifier.weight(1f).padding(end = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.weight(0.4f).padding(end = 16.dp)
             ) {
-                Text("🎯 Колесо Фортуны", fontSize = 24.sp)
+                Text("Игроки", fontSize = 20.sp)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Участники (через запятую):", fontSize = 16.sp)
-                BasicTextField(
-                    value = participantsInput,
-                    onValueChange = { participantsInput = it },
-                    modifier = Modifier.fillMaxWidth().padding(8.dp).background(Color.LightGray)
-                )
-                Button(onClick = {
-                    val colors = listOf(
-                        Color.Red, Color.Green, Color.Blue, Color.Yellow,
-                        Color.Cyan, Color.Magenta, Color.Gray, Color(0xFFFFA500)
-                    )
-                    participants = participantsInput.split(",")
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() }
-                        .mapIndexed { i, name -> Participant(name, 0, colors[i % colors.size]) }
-                    wheelParticipants = participants.toList()
-                    currentWinner = null
-                }) {
-                    Text("Создать участников")
+                // Список игроков
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(participants) { participant ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier.size(20.dp).background(participant.color)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(participant.name, fontSize = 16.sp)
+                                }
+                                Text(
+                                    "Очки: ${participant.score}",
+                                    fontSize = 14.sp,
+                                    color = Color.Blue
+                                )
+                            }
+                        }
+                    }
+
+                    // Кнопка/поле добавления игрока
+                    item {
+                        if (showAddPlayerInput) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Card(modifier = Modifier.weight(1f)) {
+                                    BasicTextField(
+                                        value = newPlayerName,
+                                        onValueChange = { newPlayerName = it },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp)
+                                            .background(Color.White),
+                                        decorationBox = { innerTextField ->
+                                            if (newPlayerName.isEmpty()) {
+                                                Text("Введите имя игрока...", color = Color.Gray)
+                                            }
+                                            innerTextField()
+                                        }
+                                    )
+                                }
+                                Button(
+                                    onClick = { addPlayer(newPlayerName) },
+                                    modifier = Modifier.size(48.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text("+", fontSize = 20.sp)
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Card(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { showAddPlayerInput = true }
+                                ) {
+                                    Text(
+                                        "Добавить игрока...",
+                                        modifier = Modifier.padding(12.dp),
+                                        fontSize = 16.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                                Button(
+                                    onClick = { showAddPlayerInput = true },
+                                    modifier = Modifier.size(48.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text("+", fontSize = 20.sp)
+                                }
+                            }
+                        }
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Кнопки управления списком
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            participants = emptyList()
+                            wheelParticipants = emptyList()
+                            currentWinner = null
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Очистить")
+                    }
+                }
+            }
+
+            // Центральная часть - игра
+            Column(
+                modifier = Modifier.weight(0.8f).padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Колесо Фортуны", fontSize = 24.sp)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -137,7 +254,7 @@ fun App() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Кнопки управления
+                // Кнопки управления игрой
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = {
                         if (wheelParticipants.isNotEmpty() && !isSpinning) {
@@ -164,11 +281,19 @@ fun App() {
 
                     Button(
                         onClick = {
-                            currentWinner?.let {
-                                it.score += 1
+                            currentWinner?.let { winner ->
+                                // Обновляем счет игрока в основном списке
+                                participants = participants.map { participant ->
+                                    if (participant.name == winner.name) {
+                                        participant.copy(score = participant.score + 1)
+                                    } else {
+                                        participant
+                                    }
+                                }
+
                                 // Обновляем лидерборд
-                                leaderboard = leaderboardManager.updatePlayerScore(it.name, 1)
-                                wheelParticipants = wheelParticipants.filter { p -> p != it }
+                                leaderboard = leaderboardManager.updatePlayerScore(winner.name, 1)
+                                wheelParticipants = wheelParticipants.filter { p -> p != winner }
                                 currentWinner = null
                                 println("Updated leaderboard: $leaderboard") // Для отладки
                             }
@@ -178,11 +303,19 @@ fun App() {
 
                     Button(
                         onClick = {
-                            currentWinner?.let {
-                                it.score -= 1
+                            currentWinner?.let { winner ->
+                                // Обновляем счет игрока в основном списке
+                                participants = participants.map { participant ->
+                                    if (participant.name == winner.name) {
+                                        participant.copy(score = participant.score - 1)
+                                    } else {
+                                        participant
+                                    }
+                                }
+
                                 // Обновляем лидерборд (отнимаем очко)
-                                leaderboard = leaderboardManager.updatePlayerScore(it.name, -1)
-                                wheelParticipants = wheelParticipants.filter { p -> p != it }
+                                leaderboard = leaderboardManager.updatePlayerScore(winner.name, -1)
+                                wheelParticipants = wheelParticipants.filter { p -> p != winner }
                                 currentWinner = null
                             }
                         },
@@ -193,24 +326,11 @@ fun App() {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Button(onClick = {
-                    participants.forEach { it.score = 0 }
+                    // Сбрасываем счет всех игроков
+                    participants = participants.map { it.copy(score = 0) }
                     wheelParticipants = participants.toList()
                     currentWinner = null
                 }) { Text("Сброс раунда") }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Список текущих игроков
-                if (participants.isNotEmpty()) {
-                    Text("Текущие участники:", fontSize = 16.sp)
-                    participants.forEach {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(16.dp).background(it.color))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("${it.name}: ${it.score}")
-                        }
-                    }
-                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -287,3 +407,4 @@ fun App() {
         }
     }
 }
+
