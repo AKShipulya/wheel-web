@@ -90,11 +90,32 @@ fun App() {
         if (participants.isEmpty()) return null
 
         val sliceAngle = 360f / participants.size
-        // Указатель находится сверху (0 градусов), учитываем поворот колеса
-        val normalizedAngle = ((360f - (currentAngle % 360f)) % 360f)
-        val winnerIndex = (normalizedAngle / sliceAngle).toInt() % participants.size
 
-        return participants[winnerIndex]
+        // Отладочная информация
+        println("=== Debug Winner Selection ===")
+        println("Current angle: $currentAngle")
+        println("Participants order:")
+        participants.forEachIndexed { index, participant ->
+            val startAngle = index * sliceAngle
+            val endAngle = startAngle + sliceAngle
+            println("  [$index] ${participant.name} (${participant.color}) - sector: ${startAngle}° to ${endAngle}°")
+        }
+
+        // Указатель находится наверху (270 градусов в системе Canvas, но мы считаем как 0)
+        // Поскольку колесо вращается по часовой стрелке, нужно инвертировать угол
+        val pointerAngle = 270f // Указатель наверху
+        val relativeAngle = (pointerAngle - currentAngle + 360f) % 360f
+
+        println("Pointer looking at angle: $relativeAngle")
+
+        val winnerIndex = (relativeAngle / sliceAngle).toInt() % participants.size
+        val winner = participants[winnerIndex]
+
+        println("Winner index: $winnerIndex")
+        println("Winner: ${winner.name} (${winner.color})")
+        println("===============================")
+
+        return winner
     }
 
     // Загружаем лидерборд при запуске
@@ -236,17 +257,23 @@ fun App() {
                         val center = Offset(size.width / 2, size.height / 2)
 
                         // Используем игроков или радужные цвета для превью
-                        val displayColors = if (wheelParticipants.isNotEmpty()) {
-                            wheelParticipants.map { it.color }
-                        } else {
-                            rainbowColors
+                        val displayParticipants = wheelParticipants.ifEmpty {
+                            rainbowColors.mapIndexed { index, color ->
+                                Participant("Player${index + 1}", 0, color)
+                            }
                         }
 
-                        val sliceAngle = 360f / displayColors.size
+                        val sliceAngle = 360f / displayParticipants.size
 
                         rotate(angle, pivot = center) {
-                            displayColors.forEachIndexed { index, baseColor ->
+                            displayParticipants.forEachIndexed { index, participant ->
                                 val startAngle = index * sliceAngle
+                                val baseColor = participant.color
+
+                                // Отладка: выводим информацию о рисовании секторов
+                                if (wheelParticipants.isNotEmpty()) {
+                                    println("Drawing sector [$index]: ${participant.name} at ${startAngle}° (color: $baseColor)")
+                                }
 
                                 // Создаем более светлый и более темный оттенки
                                 val lightColor = Color(
@@ -283,7 +310,7 @@ fun App() {
                                 )
 
                                 // Добавляем тонкую белую границу между секторами
-                                if (displayColors.size > 1) {
+                                if (displayParticipants.size > 1) {
                                     val startX = center.x + radius * cos(startAngle * PI / 180).toFloat()
                                     val startY = center.y + radius * sin(startAngle * PI / 180).toFloat()
 
@@ -338,19 +365,33 @@ fun App() {
                                 isSpinning = true
                                 val spinDuration = (spinTime.toLongOrNull() ?: 3L) * 1000L
                                 scope.launch {
-                                    val steps = 100
-                                    val delayTime = spinDuration / steps
+                                    // Фиксированная скорость: делаем много оборотов за постоянный интервал времени
+                                    val fixedStepTime = 50L // Фиксированное время между кадрами (мс)
+                                    val rotationSpeed = 10f // Скорость поворота за кадр (градусы)
+                                    val steps = (spinDuration / fixedStepTime).toInt()
 
                                     // Генерируем случайный финальный угол
-                                    val randomRotations = Random.nextFloat() * 360f + 720f // минимум 2 полных оборота
-                                    val finalAngle = angle + randomRotations
+                                    val randomFinalAngle = Random.nextFloat() * 360f
+                                    val totalRotation = steps * rotationSpeed + randomFinalAngle
+                                    val startAngle = angle
 
                                     for (i in 1..steps) {
-                                        angle += (finalAngle - angle) / (steps - i + 1)
-                                        delay(delayTime)
+                                        // Постоянная скорость в начале, замедление в конце
+                                        val progress = i.toFloat() / steps
+                                        val easedProgress = if (progress < 0.8f) {
+                                            // 80% времени - постоянная скорость
+                                            progress / 0.8f * 0.8f
+                                        } else {
+                                            // Последние 20% времени - замедление
+                                            val slowdownProgress = (progress - 0.8f) / 0.2f
+                                            0.8f + 0.2f * (1f - (1f - slowdownProgress) * (1f - slowdownProgress))
+                                        }
+
+                                        angle = startAngle + totalRotation * easedProgress
+                                        delay(fixedStepTime)
                                     }
 
-                                    angle = finalAngle % 360
+                                    angle = (startAngle + totalRotation) % 360
                                     currentWinner = getWinnerByAngle(angle, wheelParticipants)
                                     isSpinning = false
                                 }
@@ -427,10 +468,10 @@ fun App() {
 
             // Правая часть - лидерборд
             Column(
-                modifier = Modifier.weight(0.6f),
+                modifier = Modifier.weight(0.4f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("🏆 Доска лидеров", fontSize = 20.sp)
+                Text("Доска лидеров", fontSize = 20.sp)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -454,14 +495,8 @@ fun App() {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    val medal = when (index) {
-                                        0 -> "🥇"
-                                        1 -> "🥈"
-                                        2 -> "🥉"
-                                        else -> "${index + 1}."
-                                    }
                                     Text(
-                                        text = "$medal ${entry.name}",
+                                        text = entry.name,
                                         fontSize = 16.sp
                                     )
                                 }
