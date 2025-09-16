@@ -69,6 +69,18 @@ fun App() {
         }
     }
 
+    // Функция для определения победителя по текущему углу колеса
+    fun getWinnerByAngle(currentAngle: Float, participants: List<Participant>): Participant? {
+        if (participants.isEmpty()) return null
+
+        val sliceAngle = 360f / participants.size
+        // Указатель находится сверху (0 градусов), учитываем поворот колеса
+        val normalizedAngle = ((360f - (currentAngle % 360f)) % 360f)
+        val winnerIndex = (normalizedAngle / sliceAngle).toInt() % participants.size
+
+        return participants[winnerIndex]
+    }
+
     // Загружаем лидерборд при запуске
     LaunchedEffect(Unit) {
         leaderboard = leaderboardManager.getLeaderboard()
@@ -289,7 +301,7 @@ fun App() {
                 Text(
                     text = currentWinner?.name ?: "Крутите колесо!",
                     fontSize = 20.sp,
-                    color = if (currentWinner != null) Color.Red else Color.Gray
+                    color = if (currentWinner != null) currentWinner!!.color else Color.Gray
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -303,17 +315,18 @@ fun App() {
                             scope.launch {
                                 val steps = 100
                                 val delayTime = spinDuration / steps
-                                val randomIndex = Random.nextInt(wheelParticipants.size)
-                                val sliceAngle = 360f / wheelParticipants.size
-                                val targetAngle = randomIndex * sliceAngle + sliceAngle / 2
-                                val finalAngle = angle + 720 + targetAngle
+
+                                // Генерируем случайный финальный угол
+                                val randomRotations = Random.nextFloat() * 360f + 720f // минимум 2 полных оборота
+                                val finalAngle = angle + randomRotations
 
                                 for (i in 1..steps) {
                                     angle += (finalAngle - angle) / (steps - i + 1)
                                     delay(delayTime)
                                 }
+
                                 angle = finalAngle % 360
-                                currentWinner = wheelParticipants[randomIndex]
+                                currentWinner = getWinnerByAngle(angle, wheelParticipants)
                                 isSpinning = false
                             }
                         }
