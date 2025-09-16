@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -331,14 +332,22 @@ fun App() {
                         val pointerSize = 20f
                         val pointerHeight = 30f
 
+                        val arrowPath = Path().apply {
+                            moveTo(center.x, pointerHeight)
+                            lineTo(center.x - pointerSize, 0f)
+                            lineTo(center.x + pointerSize, 0f)
+                            close()
+                        }
+
                         drawPath(
-                            path = androidx.compose.ui.graphics.Path().apply {
-                                moveTo(center.x, 0f)
-                                lineTo(center.x - pointerSize, pointerHeight)
-                                lineTo(center.x + pointerSize, pointerHeight)
-                                close()
-                            },
-                            color = Color.Black
+                            path = arrowPath,
+                            color = Color.Cyan
+                        )
+
+                        drawPath(
+                            path = arrowPath,
+                            color = Color.Black,
+                            style = Stroke(width = 3f)
                         )
                     }
                 }
