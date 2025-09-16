@@ -55,6 +55,22 @@ fun App() {
         Color(0xFFFF1493), Color(0xFF9370DB), Color(0xFF20B2AA), Color(0xFFFF6347)
     )
 
+    // Радужные цвета для превью
+    val rainbowColors = listOf(
+        Color(0xFFFF0000), // Красный
+        Color(0xFFFF8000), // Оранжевый
+        Color(0xFFFFFF00), // Желтый
+        Color(0xFF80FF00), // Желто-зеленый
+        Color(0xFF00FF00), // Зеленый
+        Color(0xFF00FF80), // Зелено-голубой
+        Color(0xFF00FFFF), // Голубой
+        Color(0xFF0080FF), // Сине-голубой
+        Color(0xFF0000FF), // Синий
+        Color(0xFF8000FF), // Сине-фиолетовый
+        Color(0xFFFF00FF), // Фиолетовый
+        Color(0xFFFF0080)  // Красно-фиолетовый
+    )
+
     fun addPlayer(name: String) {
         if (name.isNotBlank()) {
             val newParticipant = Participant(
@@ -99,7 +115,7 @@ fun App() {
 
                 // Список игроков
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(participants) { participant ->
@@ -187,21 +203,19 @@ fun App() {
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Кнопки управления списком
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            participants = emptyList()
-                            wheelParticipants = emptyList()
-                            currentWinner = null
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Очистить")
+                    // Кнопка "Очистить" под полем добавления
+                    item {
+                        Button(
+                            onClick = {
+                                participants = emptyList()
+                                wheelParticipants = emptyList()
+                                currentWinner = null
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Очистить список")
+                        }
                     }
                 }
             }
@@ -218,61 +232,67 @@ fun App() {
                 Box(modifier = Modifier.size(320.dp), contentAlignment = Alignment.Center) {
                     // Колесо
                     Canvas(modifier = Modifier.size(300.dp)) {
-                        if (wheelParticipants.isNotEmpty()) {
-                            val radius = size.minDimension / 2
-                            val center = Offset(size.width / 2, size.height / 2)
-                            val sliceAngle = 360f / wheelParticipants.size
+                        val radius = size.minDimension / 2
+                        val center = Offset(size.width / 2, size.height / 2)
 
-                            rotate(angle, pivot = center) {
-                                wheelParticipants.forEachIndexed { index, participant ->
-                                    val startAngle = index * sliceAngle
+                        // Используем игроков или радужные цвета для превью
+                        val displayColors = if (wheelParticipants.isNotEmpty()) {
+                            wheelParticipants.map { it.color }
+                        } else {
+                            rainbowColors
+                        }
 
-                                    // Создаем более светлый и более темный оттенки
-                                    val lightColor = Color(
-                                        red = (participant.color.red + 0.3f).coerceIn(0f, 1f),
-                                        green = (participant.color.green + 0.3f).coerceIn(0f, 1f),
-                                        blue = (participant.color.blue + 0.3f).coerceIn(0f, 1f),
-                                        alpha = participant.color.alpha
+                        val sliceAngle = 360f / displayColors.size
+
+                        rotate(angle, pivot = center) {
+                            displayColors.forEachIndexed { index, baseColor ->
+                                val startAngle = index * sliceAngle
+
+                                // Создаем более светлый и более темный оттенки
+                                val lightColor = Color(
+                                    red = (baseColor.red + 0.3f).coerceIn(0f, 1f),
+                                    green = (baseColor.green + 0.3f).coerceIn(0f, 1f),
+                                    blue = (baseColor.blue + 0.3f).coerceIn(0f, 1f),
+                                    alpha = baseColor.alpha
+                                )
+
+                                val darkColor = Color(
+                                    red = (baseColor.red * 0.4f).coerceIn(0f, 1f),
+                                    green = (baseColor.green * 0.4f).coerceIn(0f, 1f),
+                                    blue = (baseColor.blue * 0.4f).coerceIn(0f, 1f),
+                                    alpha = baseColor.alpha
+                                )
+
+                                // Создаем угловой градиент с парами (позиция, цвет)
+                                val gradient = Brush.sweepGradient(
+                                    0f to lightColor,
+                                    0.25f to baseColor,
+                                    0.5f to darkColor,
+                                    0.75f to baseColor,
+                                    1f to lightColor,
+                                    center = center
+                                )
+
+                                drawArc(
+                                    brush = gradient,
+                                    startAngle = startAngle,
+                                    sweepAngle = sliceAngle,
+                                    useCenter = true,
+                                    topLeft = Offset(center.x - radius, center.y - radius),
+                                    size = Size(radius * 2, radius * 2)
+                                )
+
+                                // Добавляем тонкую белую границу между секторами
+                                if (displayColors.size > 1) {
+                                    val startX = center.x + radius * cos(startAngle * PI / 180).toFloat()
+                                    val startY = center.y + radius * sin(startAngle * PI / 180).toFloat()
+
+                                    drawLine(
+                                        color = Color.White,
+                                        start = center,
+                                        end = Offset(startX, startY),
+                                        strokeWidth = 2f
                                     )
-
-                                    val darkColor = Color(
-                                        red = (participant.color.red * 0.4f).coerceIn(0f, 1f),
-                                        green = (participant.color.green * 0.4f).coerceIn(0f, 1f),
-                                        blue = (participant.color.blue * 0.4f).coerceIn(0f, 1f),
-                                        alpha = participant.color.alpha
-                                    )
-
-                                    // Создаем угловой градиент с парами (позиция, цвет)
-                                    val gradient = Brush.sweepGradient(
-                                        0f to lightColor,
-                                        0.25f to participant.color,
-                                        0.5f to darkColor,
-                                        0.75f to participant.color,
-                                        1f to lightColor,
-                                        center = center
-                                    )
-
-                                    drawArc(
-                                        brush = gradient,
-                                        startAngle = startAngle,
-                                        sweepAngle = sliceAngle,
-                                        useCenter = true,
-                                        topLeft = Offset(center.x - radius, center.y - radius),
-                                        size = Size(radius * 2, radius * 2)
-                                    )
-
-                                    // Добавляем тонкую белую границу между секторами
-                                    if (wheelParticipants.size > 1) {
-                                        val startX = center.x + radius * cos(startAngle * PI / 180).toFloat()
-                                        val startY = center.y + radius * sin(startAngle * PI / 180).toFloat()
-
-                                        drawLine(
-                                            color = Color.White,
-                                            start = center,
-                                            end = Offset(startX, startY),
-                                            strokeWidth = 2f
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -299,7 +319,11 @@ fun App() {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = currentWinner?.name ?: "Крутите колесо!",
+                    text = if (wheelParticipants.isEmpty()) {
+                        "Добавьте игроков для начала игры!"
+                    } else {
+                        currentWinner?.name ?: "Крутите колесо!"
+                    },
                     fontSize = 20.sp,
                     color = if (currentWinner != null) currentWinner!!.color else Color.Gray
                 )
@@ -308,29 +332,32 @@ fun App() {
 
                 // Кнопки управления игрой
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = {
-                        if (wheelParticipants.isNotEmpty() && !isSpinning) {
-                            isSpinning = true
-                            val spinDuration = (spinTime.toLongOrNull() ?: 3L) * 1000L
-                            scope.launch {
-                                val steps = 100
-                                val delayTime = spinDuration / steps
+                    Button(
+                        onClick = {
+                            if (wheelParticipants.isNotEmpty() && !isSpinning) {
+                                isSpinning = true
+                                val spinDuration = (spinTime.toLongOrNull() ?: 3L) * 1000L
+                                scope.launch {
+                                    val steps = 100
+                                    val delayTime = spinDuration / steps
 
-                                // Генерируем случайный финальный угол
-                                val randomRotations = Random.nextFloat() * 360f + 720f // минимум 2 полных оборота
-                                val finalAngle = angle + randomRotations
+                                    // Генерируем случайный финальный угол
+                                    val randomRotations = Random.nextFloat() * 360f + 720f // минимум 2 полных оборота
+                                    val finalAngle = angle + randomRotations
 
-                                for (i in 1..steps) {
-                                    angle += (finalAngle - angle) / (steps - i + 1)
-                                    delay(delayTime)
+                                    for (i in 1..steps) {
+                                        angle += (finalAngle - angle) / (steps - i + 1)
+                                        delay(delayTime)
+                                    }
+
+                                    angle = finalAngle % 360
+                                    currentWinner = getWinnerByAngle(angle, wheelParticipants)
+                                    isSpinning = false
                                 }
-
-                                angle = finalAngle % 360
-                                currentWinner = getWinnerByAngle(angle, wheelParticipants)
-                                isSpinning = false
                             }
-                        }
-                    }) { Text("Запустить колесо") }
+                        },
+                        enabled = wheelParticipants.isNotEmpty()
+                    ) { Text("Запустить колесо") }
 
                     Button(
                         onClick = {
