@@ -378,14 +378,7 @@ fun App() {
                                     for (i in 1..steps) {
                                         // Постоянная скорость в начале, замедление в конце
                                         val progress = i.toFloat() / steps
-                                        val easedProgress = if (progress < 0.8f) {
-                                            // 80% времени - постоянная скорость
-                                            progress / 0.8f * 0.8f
-                                        } else {
-                                            // Последние 20% времени - замедление
-                                            val slowdownProgress = (progress - 0.8f) / 0.2f
-                                            0.8f + 0.2f * (1f - (1f - slowdownProgress) * (1f - slowdownProgress))
-                                        }
+                                        val easedProgress = 1f - (1f - progress) * (1f - progress) * (1f - progress)
 
                                         angle = startAngle + totalRotation * easedProgress
                                         delay(fixedStepTime)
