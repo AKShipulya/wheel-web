@@ -1,3 +1,9 @@
 package org.example.project
 
-data class LeaderboardEntry()
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class LeaderboardEntry(
+    val name: String,
+    val totalScore: Int
+)
