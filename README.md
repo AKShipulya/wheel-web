@@ -1,5 +1,4 @@
-<img width="720" height="541" alt="image" src="https://github.com/user-attachments/assets/82425b22-1904-4d41-9cfd-40fc01c7d3ae" />
-
+<img width="1714" height="636" alt="image" src="https://github.com/user-attachments/assets/af06fc9c-6f2e-4136-bc0b-9f3cff094af1" />
 
 ### Build and Run Web Application
 
