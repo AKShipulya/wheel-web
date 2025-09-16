@@ -246,7 +246,7 @@ fun App() {
                 modifier = Modifier.weight(0.8f).padding(horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Колесо Фортуны", fontSize = 24.sp)
+                Text("Rainbow Wheel of Fortune", fontSize = 24.sp)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
