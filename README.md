@@ -1,4 +1,7 @@
-<img width="1714" height="636" alt="image" src="https://github.com/user-attachments/assets/af06fc9c-6f2e-4136-bc0b-9f3cff094af1" />
+## Rainbow Wheel of Fortune
+
+<img width="1699" height="631" alt="image" src="https://github.com/user-attachments/assets/fa74f718-c882-4018-9193-f7501c88b1f5" />
+
 
 ### Build and Run Web Application
 
