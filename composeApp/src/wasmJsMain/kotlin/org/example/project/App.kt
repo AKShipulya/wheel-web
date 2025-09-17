@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -17,8 +18,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -45,7 +53,7 @@ fun App() {
     var leaderboard by remember { mutableStateOf(listOf<LeaderboardEntry>()) }
 
     var showAddPlayerInput by remember { mutableStateOf(false) }
-    var newPlayerName by remember { mutableStateOf("") }
+    var newPlayersText by remember { mutableStateOf("") }
 
     val scope = rememberCoroutineScope()
     val leaderboardManager = remember { LeaderboardManager() }
@@ -72,16 +80,23 @@ fun App() {
         Color(0xFFFF0080)  // Красно-фиолетовый
     )
 
-    fun addPlayer(name: String) {
-        if (name.isNotBlank()) {
-            val newParticipant = Participant(
-                name = name.trim(),
-                score = 0,
-                color = colors[participants.size % colors.size]
-            )
-            participants = participants + newParticipant
+    fun addPlayers(playersText: String) {
+        if (playersText.isNotBlank()) {
+            val playerNames = playersText.split("\n")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+
+            val newParticipants = playerNames.mapIndexed { index, name ->
+                Participant(
+                    name = name,
+                    score = 0,
+                    color = colors[(participants.size + index) % colors.size]
+                )
+            }
+
+            participants = participants + newParticipants
             wheelParticipants = participants.toList()
-            newPlayerName = ""
+            newPlayersText = ""
             showAddPlayerInput = false
         }
     }
@@ -165,63 +180,67 @@ fun App() {
                         }
                     }
 
-                    // Кнопка/поле добавления игрока
+                    // Поле для ввода игроков построчно
                     item {
                         if (showAddPlayerInput) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Card(modifier = Modifier.weight(1f)) {
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
                                     BasicTextField(
-                                        value = newPlayerName,
-                                        onValueChange = { newPlayerName = it },
+                                        value = newPlayersText,
+                                        onValueChange = { newPlayersText = it },
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(12.dp)
-                                            .background(Color.White),
+                                            .height(120.dp)
+                                            .background(Color.White)
+                                            .padding(8.dp),
                                         decorationBox = { innerTextField ->
-                                            if (newPlayerName.isEmpty()) {
-                                                Text("Введите имя игрока...", color = Color.Gray)
+                                            Box(
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentAlignment = Alignment.TopStart
+                                            ) {
+                                                if (newPlayersText.isEmpty()) {
+                                                    Text(
+                                                        "Введите имена игроков\n(каждое имя с новой строки):\n\nИгрок 1\nИгрок 2\nИгрок 3",
+                                                        color = Color.Gray,
+                                                        fontSize = 14.sp
+                                                    )
+                                                }
+                                                innerTextField()
                                             }
-                                            innerTextField()
                                         }
                                     )
-                                }
-                                Button(
-                                    onClick = { addPlayer(newPlayerName) },
-                                    modifier = Modifier.size(48.dp),
-                                    contentPadding = PaddingValues(0.dp)
-                                ) {
-                                    Text("+", fontSize = 20.sp)
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = { addPlayers(newPlayersText) },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Добавить")
+                                        }
+                                        Button(
+                                            onClick = {
+                                                showAddPlayerInput = false
+                                                newPlayersText = ""
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Отмена")
+                                        }
+                                    }
                                 }
                             }
                         } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Button(
+                                onClick = { showAddPlayerInput = true },
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Card(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { showAddPlayerInput = true }
-                                ) {
-                                    Text(
-                                        "Добавить игрока...",
-                                        modifier = Modifier.padding(12.dp),
-                                        fontSize = 16.sp,
-                                        color = Color.Gray
-                                    )
-                                }
-                                Button(
-                                    onClick = { showAddPlayerInput = true },
-                                    modifier = Modifier.size(48.dp),
-                                    contentPadding = PaddingValues(0.dp)
-                                ) {
-                                    Text("+", fontSize = 20.sp)
-                                }
+                                Text("Добавить игроков")
                             }
                         }
                     }
@@ -253,6 +272,8 @@ fun App() {
 
                 Box(modifier = Modifier.size(320.dp), contentAlignment = Alignment.Center) {
                     // Колесо
+                    val textMeasurer = rememberTextMeasurer()
+
                     Canvas(modifier = Modifier.size(300.dp)) {
                         val radius = size.minDimension / 2
                         val center = Offset(size.width / 2, size.height / 2)
@@ -265,6 +286,7 @@ fun App() {
                         }
 
                         val sliceAngle = 360f / displayParticipants.size
+                        val showNames = wheelParticipants.isNotEmpty() // Показываем имена только если есть реальные участники
 
                         rotate(angle, pivot = center) {
                             displayParticipants.forEachIndexed { index, participant ->
@@ -321,6 +343,55 @@ fun App() {
                                         end = Offset(startX, startY),
                                         strokeWidth = 2f
                                     )
+                                }
+
+                                // Добавляем имя игрока в центр сегмента только если есть реальные участники
+                                if (showNames) {
+                                    val middleAngle = startAngle + sliceAngle / 2
+                                    val textRadius = radius * 0.7f // Располагаем текст на 70% от радиуса
+
+                                    val textX = center.x + textRadius * cos(middleAngle * PI / 180).toFloat()
+                                    val textY = center.y + textRadius * sin(middleAngle * PI / 180).toFloat()
+
+                                    // Определяем размер шрифта в зависимости от количества игроков
+                                    val fontSize = when {
+                                        displayParticipants.size <= 4 -> 16.sp
+                                        displayParticipants.size <= 8 -> 12.sp
+                                        else -> 10.sp
+                                    }
+
+                                    // Определяем цвет текста - белый или черный в зависимости от яркости фона
+                                    val textColor = if (baseColor.red * 0.299 + baseColor.green * 0.587 + baseColor.blue * 0.114 > 0.5) {
+                                        Color.Black
+                                    } else {
+                                        Color.White
+                                    }
+
+                                    val textStyle = TextStyle(
+                                        color = textColor,
+                                        fontSize = fontSize,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    // Измеряем текст
+                                    val textLayoutResult = textMeasurer.measure(
+                                        text = participant.name,
+                                        style = textStyle
+                                    )
+
+                                    // Рисуем текст с поворотом по направлению от центра
+                                    withTransform({
+                                        // Поворачиваем на угол сегмента + 90 градусов для чтения "от центра"
+                                        rotate(middleAngle + 90f, pivot = Offset(textX, textY))
+                                    }) {
+                                        drawText(
+                                            textLayoutResult = textLayoutResult,
+                                            topLeft = Offset(
+                                                textX - textLayoutResult.size.width / 2,
+                                                textY - textLayoutResult.size.height / 2
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -488,8 +559,23 @@ fun App() {
                     }
                 } else {
                     leaderboard.take(10).forEachIndexed { index, entry ->
+                        // Определяем цвет фона для первых трех мест
+                        val cardColors = when (index) {
+                            0 -> CardDefaults.cardColors(containerColor = Color(0xFFFFD700)) // Золотой
+                            1 -> CardDefaults.cardColors(containerColor = Color(0xFFC0C0C0)) // Серебряный
+                            2 -> CardDefaults.cardColors(containerColor = Color(0xFFCD7F32)) // Бронзовый
+                            else -> CardDefaults.cardColors() // Стандартные цвета Material3
+                        }
+
+                        // Определяем цвет текста в зависимости от фона
+                        val textColor = when (index) {
+                            0, 1, 2 -> Color.Black // Для первых трех мест - черный текст
+                            else -> Color.Unspecified // Стандартный цвет текста
+                        }
+
                         Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            colors = cardColors
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -497,15 +583,27 @@ fun App() {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Добавляем номер места для первых трех
+                                    if (index < 3) {
+                                        Text(
+                                            text = "${index + 1}.",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = textColor
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
                                     Text(
                                         text = entry.name,
-                                        fontSize = 16.sp
+                                        fontSize = 16.sp,
+                                        color = textColor
                                     )
                                 }
                                 Text(
                                     "${entry.totalScore}",
                                     fontSize = 16.sp,
-                                    color = Color.Blue
+                                    color = if (index < 3) textColor else Color.Blue,
+                                    fontWeight = if (index < 3) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
                         }
