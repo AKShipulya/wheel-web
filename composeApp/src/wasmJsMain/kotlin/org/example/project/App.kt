@@ -47,8 +47,10 @@ fun App() {
     var participants by remember { mutableStateOf(listOf<Participant>()) }
     var wheelParticipants by remember { mutableStateOf(listOf<Participant>()) }
     var currentWinner by remember { mutableStateOf<Participant?>(null) }
+    var previousWinner by remember { mutableStateOf<Participant?>(null) } // Добавляем переменную для предыдущего игрока
     var isSpinning by remember { mutableStateOf(false) }
     var spinTime by remember { mutableStateOf("3") }
+    var remainingTime by remember { mutableStateOf(0L) }
     var angle by remember { mutableStateOf(0f) }
     var leaderboard by remember { mutableStateOf(listOf<LeaderboardEntry>()) }
 
@@ -252,6 +254,7 @@ fun App() {
                                 participants = emptyList()
                                 wheelParticipants = emptyList()
                                 currentWinner = null
+                                previousWinner = null
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -270,11 +273,11 @@ fun App() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Box(modifier = Modifier.size(320.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(550.dp), contentAlignment = Alignment.Center) {
                     // Колесо
                     val textMeasurer = rememberTextMeasurer()
 
-                    Canvas(modifier = Modifier.size(300.dp)) {
+                    Canvas(modifier = Modifier.size(520.dp)) {
                         val radius = size.minDimension / 2
                         val center = Offset(size.width / 2, size.height / 2)
 
@@ -398,10 +401,10 @@ fun App() {
                     }
 
                     // Указатель-стрелка
-                    Canvas(modifier = Modifier.size(320.dp)) {
+                    Canvas(modifier = Modifier.size(550.dp)) {
                         val center = Offset(size.width / 2, size.height / 2)
-                        val pointerSize = 20f
-                        val pointerHeight = 30f
+                        val pointerSize = 35f
+                        val pointerHeight = 55f
 
                         val arrowPath = Path().apply {
                             moveTo(center.x, pointerHeight)
@@ -425,14 +428,22 @@ fun App() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Обновленное отображение информации о текущем состоянии
                 Text(
                     text = if (wheelParticipants.isEmpty()) {
                         "Добавьте игроков для начала игры!"
+                    } else if (previousWinner != null) {
+                        "Игрок для начисления очков: ${previousWinner!!.name}"
                     } else {
-                        currentWinner?.name ?: "Крутите колесо!"
+                        currentWinner?.let { "Текущий игрок: ${it.name}" } ?: "Крутите колесо!"
                     },
                     fontSize = 20.sp,
-                    color = if (currentWinner != null) currentWinner!!.color else Color.Gray
+                    color = when {
+                        wheelParticipants.isEmpty() -> Color.Gray
+                        previousWinner != null -> previousWinner!!.color
+                        currentWinner != null -> currentWinner!!.color
+                        else -> Color.Gray
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -444,6 +455,8 @@ fun App() {
                             if (wheelParticipants.isNotEmpty() && !isSpinning) {
                                 isSpinning = true
                                 val spinDuration = (spinTime.toLongOrNull() ?: 3L) * 1000L
+                                remainingTime = spinDuration // Устанавливаем начальное время
+
                                 scope.launch {
                                     // Фиксированная скорость: делаем много оборотов за постоянный интервал времени
                                     val fixedStepTime = 50L // Фиксированное время между кадрами (мс)
@@ -461,11 +474,21 @@ fun App() {
                                         val easedProgress = 1f - (1f - progress) * (1f - progress) * (1f - progress)
 
                                         angle = startAngle + totalRotation * easedProgress
+
+                                        // Обновляем оставшееся время
+                                        remainingTime = spinDuration - (i * fixedStepTime)
+
                                         delay(fixedStepTime)
                                     }
 
                                     angle = (startAngle + totalRotation) % 360
+
+                                    // Сохраняем предыдущего победителя
+                                    previousWinner = currentWinner
+                                    // Устанавливаем нового текущего игрока
                                     currentWinner = getWinnerByAngle(angle, wheelParticipants)
+
+                                    remainingTime = 0L // Сбрасываем таймер
                                     isSpinning = false
                                 }
                             }
@@ -473,10 +496,11 @@ fun App() {
                         enabled = wheelParticipants.isNotEmpty()
                     ) { Text("Запустить колесо") }
 
+
                     Button(
                         onClick = {
-                            currentWinner?.let { winner ->
-                                // Обновляем счет игрока в основном списке
+                            previousWinner?.let { winner ->
+                                // Обновляем счет предыдущего игрока в основном списке
                                 participants = participants.map { participant ->
                                     if (participant.name == winner.name) {
                                         participant.copy(score = participant.score + 1)
@@ -487,18 +511,27 @@ fun App() {
 
                                 // Обновляем лидерборд
                                 leaderboard = leaderboardManager.updatePlayerScore(winner.name, 1)
-                                wheelParticipants = wheelParticipants.filter { p -> p != winner }
-                                currentWinner = null
+
+                                // Убираем предыдущего игрока из колеса
+                                wheelParticipants = wheelParticipants.filter { p -> p.name != winner.name }
+
+                                // Сбрасываем состояния
+                                previousWinner = null
+                                // Если предыдущий игрок был также текущим, сбрасываем и его
+                                if (currentWinner?.name == winner.name) {
+                                    currentWinner = null
+                                }
+
                                 println("Updated leaderboard: $leaderboard") // Для отладки
                             }
                         },
-                        enabled = currentWinner != null
+                        enabled = previousWinner != null
                     ) { Text("Выиграл") }
 
                     Button(
                         onClick = {
-                            currentWinner?.let { winner ->
-                                // Обновляем счет игрока в основном списке
+                            previousWinner?.let { winner ->
+                                // Обновляем счет предыдущего игрока в основном списке
                                 participants = participants.map { participant ->
                                     if (participant.name == winner.name) {
                                         participant.copy(score = participant.score - 1)
@@ -509,11 +542,19 @@ fun App() {
 
                                 // Обновляем лидерборд (отнимаем очко)
                                 leaderboard = leaderboardManager.updatePlayerScore(winner.name, -1)
-                                wheelParticipants = wheelParticipants.filter { p -> p != winner }
-                                currentWinner = null
+
+                                // Убираем предыдущего игрока из колеса
+                                wheelParticipants = wheelParticipants.filter { p -> p.name != winner.name }
+
+                                // Сбрасываем состояния
+                                previousWinner = null
+                                // Если предыдущий игрок был также текущим, сбрасываем и его
+                                if (currentWinner?.name == winner.name) {
+                                    currentWinner = null
+                                }
                             }
                         },
-                        enabled = currentWinner != null
+                        enabled = previousWinner != null
                     ) { Text("Проиграл") }
                 }
 
@@ -524,6 +565,8 @@ fun App() {
                     participants = participants.map { it.copy(score = 0) }
                     wheelParticipants = participants.toList()
                     currentWinner = null
+                    previousWinner = null
+                    remainingTime = 0L // Сбрасываем таймер
                 }) { Text("Сброс раунда") }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -537,9 +580,44 @@ fun App() {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Время вращения (сек)")
                 }
+
+                // Таймер обратного отсчета
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (isSpinning) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(0.6f),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "Осталось времени: ${previousWinner?.name ?: ""}",
+                                fontSize = 14.sp,
+                                color = Color.Gray,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                "${(remainingTime / 1000).toInt()} сек",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (remainingTime > 1000) Color.Blue else Color.Red,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else if (remainingTime == 0L && !isSpinning && wheelParticipants.isNotEmpty()) {
+                    Text(
+                        "Колесо остановлено",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
             }
 
-            // Правая часть - лидерборд
+                // Правая часть - лидерборд
             Column(
                 modifier = Modifier.weight(0.4f),
                 horizontalAlignment = Alignment.CenterHorizontally
