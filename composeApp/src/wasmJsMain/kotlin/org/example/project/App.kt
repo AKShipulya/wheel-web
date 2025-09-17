@@ -2,7 +2,6 @@ package org.example.project
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -146,7 +144,8 @@ fun App() {
         Row(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             // Левая часть - управление игроками
             Column(
-                modifier = Modifier.weight(0.4f).padding(end = 16.dp)
+                modifier = Modifier.weight(0.4f).padding(end = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Игроки", fontSize = 20.sp)
 
