@@ -2,7 +2,7 @@
 
 https://akshipulya.github.io/wheel-web/
 
-<img width="1324" height="877" alt="image" src="https://github.com/user-attachments/assets/c805b52f-9854-4ff9-afc7-26929bcd27fa" />
+<img width="1315" height="913" alt="image" src="https://github.com/user-attachments/assets/daf1bd18-804c-4f49-9a36-1ded69ebcb8f" />
 
 ### Build and Run Web Application
 
